@@ -1,37 +1,82 @@
-To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+============================================ 
+  AirNovel - 正在编译 
+============================================ 
+ 
+Gradle: e:\gradle-9.5.0\bin\gradle.bat 
+Java:   D:\Program Files\Zulu\zulu-17 
+ 
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.5.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
-This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
-package.xml parsing problem. 意外的元素 (uri:"", local:"abis")。所需元素为<{}vendor>,<{}codename>,<{}base-extension>,<{}abi>,<{}api-level>,<{}extension-level>,<{}tag>
-package.xml parsing problem. 意外的元素 (uri:"", local:"translatedAbis")。所需元素为<{}vendor>,<{}codename>,<{}base-extension>,<{}abi>,<{}api-level>,<{}extension-level>,<{}tag>
-package.xml parsing problem. 意外的元素 (uri:"", local:"abis")。所需元素为<{}vendor>,<{}codename>,<{}base-extension>,<{}abi>,<{}api-level>,<{}extension-level>,<{}tag>
-package.xml parsing problem. 意外的元素 (uri:"", local:"translatedAbis")。所需元素为<{}vendor>,<{}codename>,<{}base-extension>,<{}abi>,<{}api-level>,<{}extension-level>,<{}tag>
-IO exception while downloading manifest:
-java.io.IOException: Server returned HTTP response code: 429 for URL: https://dl.google.com/android/repository/sys-img/android-automotive-distantdisplay/sys-img2-3.xml
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream0(HttpURLConnection.java:2026)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream(HttpURLConnection.java:1617)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.getInputStream(HttpsURLConnectionImpl.java:223)
-	at com.android.sdklib.repository.legacy.remote.internal.DownloadCache.openUrl(DownloadCache.java:246)
-	at com.android.sdklib.repository.legacy.remote.internal.DownloadCache.downloadAndCache(DownloadCache.java:622)
-	at com.android.sdklib.repository.legacy.remote.internal.DownloadCache.openCachedUrl(DownloadCache.java:453)
-	at com.android.sdklib.repository.legacy.LegacyDownloader.downloadAndStream(LegacyDownloader.java:82)
-	at com.android.repository.impl.downloader.LocalFileAwareDownloader.downloadAndStream(LocalFileAwareDownloader.java:51)
-	at com.android.repository.impl.manager.RemoteRepoLoaderImpl.lambda$fetchPackages$0(RemoteRepoLoaderImpl.java:138)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1583)
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
 
-Checking the license for package Android SDK Build-Tools 34 in C:\Users\Administrator\AppData\Local\Android\Sdk\licenses
-License for package Android SDK Build-Tools 34 accepted.
-Preparing "Install Android SDK Build-Tools 34 v.34.0.0".
-Warning: Failed to download package!
-"Install Android SDK Build-Tools 34 v.34.0.0" failed.
+> Task :app:compileDebugKotlin
+w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:100:51 'val Icons.Filled.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.LibraryBooks.
+w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:198:21 'fun SwipeRefresh(state: SwipeRefreshState, onRefresh: () -> Unit, modifier: Modifier = ..., swipeEnabled: Boolean = ..., refreshTriggerDistance: Dp = ..., indicatorAlignment: Alignment = ..., indicatorPadding: PaddingValues = ..., indicator: @Composable() ComposableFunction2<@ParameterName(...) SwipeRefreshState, @ParameterName(...) Dp, Unit> = ..., clipIndicatorToPadding: Boolean = ..., content: @Composable() ComposableFunction0<Unit>): Unit' is deprecated. accompanist/swiperefresh is deprecated.
+ The androidx.compose equivalent of SwipeRefresh is Modifier.pullRefresh().
+ This is often migrated as:
+ Box(modifier = Modifier.pullRefresh(refreshState)) { 
+    ... 
+    PullRefreshIndicator(...) 
+ }
+ 
+ For more migration information, please visit https://google.github.io/accompanist/swiperefresh/#migration.
+w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:199:33 'fun rememberSwipeRefreshState(isRefreshing: Boolean): SwipeRefreshState' is deprecated. accompanist/swiperefresh is deprecated.
+     The androidx.compose equivalent of rememberSwipeRefreshState() is rememberPullRefreshState().
+     For more migration information, please visit https://google.github.io/accompanist/swiperefresh/#migration.
+w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:209:55 'val Icons.Filled.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.MenuBook.
+w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/settings/SettingsScreen.kt:200:50 'val Icons.Filled.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.MenuBook.
+w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/theme/Theme.kt:76:20 'var statusBarColor: Int' is deprecated. Deprecated in Java.
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:processDebugJavaRes
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJavaResource
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
 
 [Incubating] Problems report is available at: file:///E:/Airnovel/build/reports/problems/problems-report.html
 
-Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
 
 You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
 
-For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+For more on this, please refer to https://docs.gradle.org/9.5.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 25s
+35 actionable tasks: 8 executed, 27 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.5.0/userguide/configuration_cache_enabling.html

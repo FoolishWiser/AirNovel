@@ -1,22 +1,25 @@
 package com.airnovel.app.ui.reader
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
@@ -27,8 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.airnovel.app.ui.theme.ReaderDayBg
-import com.airnovel.app.ui.theme.ReaderNightBg
+import com.airnovel.app.ui.theme.ReaderBgDay
+import com.airnovel.app.ui.theme.ReaderBgNight
 import com.airnovel.app.ui.theme.ReaderTextDay
 import com.airnovel.app.ui.theme.ReaderTextNight
 import kotlinx.coroutines.launch
@@ -49,41 +52,62 @@ fun ReaderScreen(
     var showSettings by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LaunchedEffect(bookId, chapterId) {
         viewModel.initialize(bookId, chapterId, bookTitle, chapterIndex, chapterIdList)
     }
 
-    // Track scroll progress
     LaunchedEffect(scrollState.value) {
         val maxScroll = (scrollState.maxValue).coerceAtLeast(1)
         val progress = if (maxScroll > 0) scrollState.value.toFloat() / maxScroll else 0f
         viewModel.updateScrollProgress(progress)
     }
 
-    val bgColor = if (uiState.isNightMode) ReaderNightBg else ReaderDayBg
+    val bgColor = if (uiState.isNightMode) ReaderBgNight else ReaderBgDay
     val textColor = if (uiState.isNightMode) ReaderTextNight else ReaderTextDay
+    val uiColor = if (uiState.isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF5A5A5A)
     val fontFamily = if (uiState.useSerif) FontFamily.Serif else FontFamily.Default
+
+    // Settings Bottom Sheet
+    if (showSettings) {
+        ModalBottomSheet(
+            onDismissRequest = { showSettings = false },
+            sheetState = sheetState,
+            containerColor = if (uiState.isNightMode) Color(0xFF2A2A2A) else Color(0xFFFFF8EF),
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+        ) {
+            ReaderSettingsPanel(
+                fontSize = uiState.fontSize,
+                lineSpacing = uiState.lineSpacing,
+                useSerif = uiState.useSerif,
+                onFontSizeChange = { viewModel.updateFontSize(it) },
+                onLineSpacingChange = { viewModel.updateLineSpacing(it) },
+                onSerifToggle = { viewModel.toggleSerif() },
+                onNightModeToggle = { viewModel.toggleNightMode() },
+                isNightMode = uiState.isNightMode
+            )
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor)
     ) {
-        // Main content area with swipe detection
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
-                        onDragEnd = { /* handled by threshold */ },
+                        onDragEnd = { },
                         onHorizontalDrag = { _, dragAmount ->
-                            if (dragAmount < -50) {
+                            if (dragAmount < -60) {
                                 scope.launch {
                                     viewModel.goToNextChapter()
                                     scrollState.scrollTo(0)
                                 }
-                            } else if (dragAmount > 50) {
+                            } else if (dragAmount > 60) {
                                 scope.launch {
                                     viewModel.goToPrevChapter()
                                     scrollState.scrollTo(0)
@@ -93,20 +117,21 @@ fun ReaderScreen(
                     )
                 }
         ) {
-            // Top bar (auto-hide)
+            // Top bar
             AnimatedVisibility(
                 visible = showControls,
-                enter = fadeIn(),
-                exit = fadeOut()
+                enter = slideInVertically { -it } + fadeIn(),
+                exit = slideOutVertically { -it } + fadeOut()
             ) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = bgColor.copy(alpha = 0.95f),
-                    shadowElevation = 2.dp
+                    color = bgColor.copy(alpha = 0.96f),
+                    shadowElevation = if (uiState.isNightMode) 0.dp else 1.dp
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .statusBarsPadding()
                             .padding(horizontal = 4.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -114,26 +139,28 @@ fun ReaderScreen(
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "返回",
-                                tint = textColor
+                                tint = uiColor
                             )
                         }
 
                         Text(
                             text = uiState.chapterTitle.ifEmpty { "加载中..." },
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontFamily = FontFamily.Serif
+                            style = TextStyle(
+                                fontFamily = FontFamily.Serif,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 15.sp,
+                                color = uiColor
                             ),
-                            color = textColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
 
-                        IconButton(onClick = { showSettings = !showSettings }) {
+                        IconButton(onClick = { showSettings = true }) {
                             Icon(
-                                Icons.Default.TextFields,
+                                Icons.Default.FormatSize,
                                 contentDescription = "阅读设置",
-                                tint = textColor
+                                tint = uiColor
                             )
                         }
 
@@ -141,14 +168,14 @@ fun ReaderScreen(
                             Icon(
                                 if (uiState.isNightMode) Icons.Default.LightMode else Icons.Default.DarkMode,
                                 contentDescription = "夜间模式",
-                                tint = textColor
+                                tint = uiColor
                             )
                         }
                     }
                 }
             }
 
-            // Content area
+            // Content
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -167,8 +194,12 @@ fun ReaderScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(16.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                strokeWidth = 3.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
                             Text("加载中...", color = textColor)
                         }
                     }
@@ -177,17 +208,24 @@ fun ReaderScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(32.dp),
+                                .padding(40.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
+                            Icon(
+                                Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 uiState.error ?: "加载失败",
                                 color = MaterialTheme.colorScheme.error,
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = {
+                            Spacer(modifier = Modifier.height(20.dp))
+                            FilledTonalButton(onClick = {
                                 val idx = uiState.currentChapterIndex
                                 if (idx < chapterIdList.size) {
                                     viewModel.loadChapter(chapterIdList[idx])
@@ -203,23 +241,34 @@ fun ReaderScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .verticalScroll(scrollState)
-                                .padding(horizontal = 24.dp)
-                                .padding(top = 16.dp, bottom = 16.dp)
+                                .padding(horizontal = 28.dp)
+                                .padding(top = 20.dp, bottom = 20.dp)
                         ) {
-                            // Chapter title
+                            // Chapter title with decorative line
                             Text(
                                 text = uiState.chapterTitle,
                                 style = TextStyle(
                                     fontFamily = FontFamily.Serif,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 22.sp,
-                                    color = textColor
+                                    fontSize = 20.sp,
+                                    color = textColor,
+                                    lineHeight = 28.sp
                                 ),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 20.dp),
+                                    .padding(bottom = 24.dp),
                                 textAlign = TextAlign.Center
                             )
+
+                            // Decorative divider
+                            Box(
+                                modifier = Modifier
+                                    .width(60.dp)
+                                    .height(2.dp)
+                                    .background(textColor.copy(alpha = 0.2f))
+                                    .align(Alignment.CenterHorizontally)
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
 
                             // Content
                             BasicText(
@@ -234,61 +283,71 @@ fun ReaderScreen(
                                 modifier = Modifier.fillMaxWidth()
                             )
 
-                            Spacer(modifier = Modifier.height(32.dp))
+                            Spacer(modifier = Modifier.height(40.dp))
 
-                            // Navigation buttons
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
+                            // Chapter nav
+                            Card(
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = textColor.copy(alpha = 0.05f)
+                                )
                             ) {
-                                TextButton(
-                                    onClick = {
-                                        viewModel.goToPrevChapter()
-                                        scope.launch { scrollState.scrollTo(0) }
-                                    },
-                                    enabled = uiState.hasPrevChapter
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
                                 ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("上一章")
-                                }
+                                    TextButton(
+                                        onClick = {
+                                            viewModel.goToPrevChapter()
+                                            scope.launch { scrollState.scrollTo(0) }
+                                        },
+                                        enabled = uiState.hasPrevChapter
+                                    ) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowBack,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("上一章")
+                                    }
 
-                                TextButton(
-                                    onClick = {
-                                        viewModel.goToNextChapter()
-                                        scope.launch { scrollState.scrollTo(0) }
-                                    },
-                                    enabled = uiState.hasNextChapter
-                                ) {
-                                    Text("下一章")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.ArrowForward,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                    TextButton(
+                                        onClick = {
+                                            viewModel.goToNextChapter()
+                                            scope.launch { scrollState.scrollTo(0) }
+                                        },
+                                        enabled = uiState.hasNextChapter
+                                    ) {
+                                        Text("下一章")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowForward,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
                 }
             }
 
-            // Bottom progress bar
+            // Bottom bar
             AnimatedVisibility(
                 visible = showControls,
-                enter = fadeIn(),
-                exit = fadeOut()
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut()
             ) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = bgColor.copy(alpha = 0.95f),
-                    shadowElevation = 2.dp
+                    color = bgColor.copy(alpha = 0.96f),
+                    shadowElevation = if (uiState.isNightMode) 0.dp else 1.dp
                 ) {
                     Column {
                         LinearProgressIndicator(
@@ -297,123 +356,180 @@ fun ReaderScreen(
                                 .fillMaxWidth()
                                 .height(2.dp),
                             color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            trackColor = textColor.copy(alpha = 0.1f)
                         )
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .navigationBarsPadding()
+                                .padding(horizontal = 20.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "第${uiState.currentChapterIndex + 1}/${uiState.totalChapters}章",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = textColor.copy(alpha = 0.7f)
+                                style = TextStyle(
+                                    fontFamily = FontFamily.Serif,
+                                    fontSize = 12.sp,
+                                    color = textColor.copy(alpha = 0.6f)
+                                )
                             )
                             Text(
                                 text = "${(uiState.scrollProgress * 100).toInt()}%",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = textColor.copy(alpha = 0.7f)
+                                style = TextStyle(
+                                    fontFamily = FontFamily.Serif,
+                                    fontSize = 12.sp,
+                                    color = textColor.copy(alpha = 0.6f)
+                                )
                             )
                         }
                     }
                 }
             }
         }
+    }
+}
 
-        // Settings panel
-        AnimatedVisibility(
-            visible = showSettings,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.Center)
-        ) {
-            Card(
-                modifier = Modifier
-                    .padding(32.dp)
-                    .fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = if (uiState.isNightMode)
-                        Color(0xFF333333)
-                    else
-                        Color(0xFFFFF8EF)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+@Composable
+fun ReaderSettingsPanel(
+    fontSize: Float,
+    lineSpacing: Float,
+    useSerif: Boolean,
+    onFontSizeChange: (Float) -> Unit,
+    onLineSpacingChange: (Float) -> Unit,
+    onSerifToggle: () -> Unit,
+    onNightModeToggle: () -> Unit,
+    isNightMode: Boolean
+) {
+    val textColor = if (isNightMode) Color(0xFFD0CEC4) else Color(0xFF3A3A3A)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Text(
+            "阅读设置",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Bold
+            ),
+            color = textColor
+        )
+
+        // Font size
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        "阅读设置",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = textColor
-                    )
-
-                    // Font size
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("字号", color = textColor, modifier = Modifier.width(40.dp))
-                        IconButton(
-                            onClick = { viewModel.updateFontSize((uiState.fontSize - 2f).coerceAtLeast(12f)) }
-                        ) {
-                            Icon(Icons.Default.Remove, contentDescription = "减小", tint = textColor)
-                        }
-                        Text(
-                            "${uiState.fontSize.toInt()}",
-                            color = textColor,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                        IconButton(
-                            onClick = { viewModel.updateFontSize((uiState.fontSize + 2f).coerceAtMost(32f)) }
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "增大", tint = textColor)
-                        }
-                    }
-
-                    // Line spacing
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("间距", color = textColor, modifier = Modifier.width(40.dp))
-                        Slider(
-                            value = uiState.lineSpacing,
-                            onValueChange = { viewModel.updateLineSpacing(it) },
-                            valueRange = 1.0f..2.5f,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            "%.1f".format(uiState.lineSpacing),
-                            color = textColor,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    }
-
-                    // Font toggle
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("衬线字体", color = textColor)
-                        Switch(
-                            checked = uiState.useSerif,
-                            onCheckedChange = { viewModel.toggleSerif() }
-                        )
-                    }
-
-                    // Close button
-                    Button(
-                        onClick = { showSettings = false },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("关闭")
-                    }
-                }
+                Text("字号", style = MaterialTheme.typography.bodyLarge, color = textColor)
+                Text(
+                    "${fontSize.toInt()}sp",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor.copy(alpha = 0.6f)
+                )
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("A", fontSize = 14.sp, color = textColor)
+                Slider(
+                    value = fontSize,
+                    onValueChange = onFontSizeChange,
+                    valueRange = 12f..32f,
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                Text("A", fontSize = 24.sp, color = textColor)
+            }
+        }
+
+        // Line spacing
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("行距", style = MaterialTheme.typography.bodyLarge, color = textColor)
+                Text(
+                    "%.1f".format(lineSpacing),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor.copy(alpha = 0.6f)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("紧凑", fontSize = 13.sp, color = textColor.copy(alpha = 0.5f))
+                Slider(
+                    value = lineSpacing,
+                    onValueChange = onLineSpacingChange,
+                    valueRange = 1.0f..2.5f,
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                Text("宽松", fontSize = 13.sp, color = textColor.copy(alpha = 0.5f))
+            }
+        }
+
+        // Toggle row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { onNightModeToggle() }
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (isNightMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = textColor
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("深色模式", style = MaterialTheme.typography.bodyLarge, color = textColor)
+            }
+            Switch(
+                checked = isNightMode,
+                onCheckedChange = { onNightModeToggle() }
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { onSerifToggle() }
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.TextFields,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = textColor
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("衬线字体", style = MaterialTheme.typography.bodyLarge, color = textColor)
+            }
+            Switch(
+                checked = useSerif,
+                onCheckedChange = { onSerifToggle() }
+            )
         }
     }
 }

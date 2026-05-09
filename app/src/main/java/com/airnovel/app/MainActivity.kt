@@ -49,8 +49,7 @@ class MainActivity : ComponentActivity() {
             val useDarkTheme = if (followSystem) isSystemDark else isDarkMode
 
             AirNovelTheme(
-                darkTheme = useDarkTheme,
-                followSystem = followSystem
+                darkTheme = useDarkTheme
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
