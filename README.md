@@ -134,4 +134,4 @@ app/src/main/java/com/airnovel/app/
 - **v1.1.0** — UI 全面现代化升级、Material 3 新配色、底部设置面板、骨架屏加载、动画流畅度提升
 - **v1.0.0** — 初始发布
 
-- 本项目开发过程中使用了 DeepSeek V4 Flash 进行辅助编程。 Powered by DeepSeek V4 Flash.
+本项目开发过程中使用了 DeepSeek V4 Flash 进行辅助编程。 Powered by DeepSeek V4 Flash.
