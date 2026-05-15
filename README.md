@@ -131,7 +131,7 @@ app/src/main/java/com/airnovel/app/
 
 ## 版本历史
 
-- **v1.1.1** — 修复章节 ID 字符串比较导致的排序错误、修复 RetrofitClient 重复初始化逻辑缺陷、优化后台线程使用、移除无效状态变量、修复通知 requestCode 生成
+- **v1.1.1** — 性能优化（移除 AnimatedVisibility 卡顿、优化滚动监听）、修复章节排序错误、修复 RetrofitClient 初始化缺陷、修复通知 requestCode 冲突
 - **v1.1.0** — UI 全面现代化升级、Material 3 新配色、底部设置面板、骨架屏加载、动画流畅度提升
 - **v1.0.0** — 初始发布
 

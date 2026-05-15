@@ -10,6 +10,11 @@
 - 移除 `BookshelfScreen` 中无效的 pressed 状态变量
 - 修复 `NotificationHelper` 中 requestCode 使用时间戳可能导致冲突的问题
 
+### Performance
+- 移除 BookshelfScreen 中 AnimatedVisibility 导致的列表滚动卡顿
+- 移除 ChapterListScreen 中 AnimatedVisibility 导致的章节列表滚动卡顿
+- 优化 ReaderScreen 滚动监听，使用 snapshotFlow + 阈值过滤减少重组
+
 ## v1.1.0
 
 - 全面 UI 现代化升级：Material 3 新配色、卡片圆角阴影优化、骨架屏加载

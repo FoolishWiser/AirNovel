@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +35,7 @@ import com.airnovel.app.ui.theme.ReaderBgDay
 import com.airnovel.app.ui.theme.ReaderBgNight
 import com.airnovel.app.ui.theme.ReaderTextDay
 import com.airnovel.app.ui.theme.ReaderTextNight
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,10 +60,18 @@ fun ReaderScreen(
         viewModel.initialize(bookId, chapterId, bookTitle, chapterIndex, chapterIdList)
     }
 
-    LaunchedEffect(scrollState.value) {
+    LaunchedEffect(Unit) {
+        var lastProgress = -1f
         val maxScroll = (scrollState.maxValue).coerceAtLeast(1)
-        val progress = if (maxScroll > 0) scrollState.value.toFloat() / maxScroll else 0f
-        viewModel.updateScrollProgress(progress)
+        val totalForMax = if (maxScroll > 0) maxScroll.toFloat() else 1f
+        snapshotFlow { scrollState.value }
+            .collect { value ->
+                val progress = value.toFloat() / totalForMax
+                if (kotlin.math.abs(progress - lastProgress) >= 0.01f) {
+                    lastProgress = progress
+                    viewModel.updateScrollProgress(progress)
+                }
+            }
     }
 
     val bgColor = if (uiState.isNightMode) ReaderBgNight else ReaderBgDay

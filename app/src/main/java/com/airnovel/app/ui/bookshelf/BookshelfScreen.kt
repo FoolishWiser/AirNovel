@@ -1,6 +1,5 @@
 package com.airnovel.app.ui.bookshelf
 
-import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -231,16 +230,10 @@ fun BookshelfScreen(
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 items(uiState.books, key = { it.bookId }) { book ->
-                                    AnimatedVisibility(
-                                        visible = true,
-                                        enter = fadeIn(animationSpec = tween(400)) +
-                                                scaleIn(initialScale = 0.9f, animationSpec = tween(400))
-                                    ) {
-                                        ModernBookCard(
-                                            book = book,
-                                            onClick = { onBookClick(book.bookId, book.title) }
-                                        )
-                                    }
+                                    ModernBookCard(
+                                        book = book,
+                                        onClick = { onBookClick(book.bookId, book.title) }
+                                    )
                                 }
                             }
                         }

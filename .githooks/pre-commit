@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+# AirNovel pre-commit hook
+# 位于 .githooks/ 目录中，通过 core.hooksPath 自动生效
+#
+
+echo "=== AirNovel pre-commit check ==="
+
+# 检查1: 不允许提交编译产物
+STAGED_BUILD=$(git diff --cached --name-only | grep -E '\.(apk|aab|ap_|dex|class)$' || true)
+if [ -n "$STAGED_BUILD" ]; then
+    echo "[ERROR] 暂存区包含编译产物文件："
+    echo "$STAGED_BUILD"
+    echo "请在 .gitignore 中添加这些文件并取消暂存。"
+    exit 1
+fi
+
+# 检查2: 不允许提交调试日志 (println / Log.d / Log.v)
+STAGED_DEBUG=$(git diff --cached -U0 -- '*.kt' | grep -E '^\+\s*.*(println|Log\.d|Log\.v|Log\.i)\(' || true)
+if [ -n "$STAGED_DEBUG" ]; then
+    echo "[ERROR] 暂存代码中包含调试日志："
+    echo "$STAGED_DEBUG"
+    exit 1
+fi
+
+# 检查3: 警告 TODO/FIXME 标记
+STAGED_FILES=$(git diff --cached --name-only -- '*.kt' '*.java' '*.kts' || true)
+if [ -n "$STAGED_FILES" ]; then
+    TODOS=$(git diff --cached -U0 -- "$STAGED_FILES" | grep -E '^\+\s*.*(TODO|FIXME|HACK|XXX)' || true)
+    if [ -n "$TODOS" ]; then
+        echo "[WARN] 包含待办标记："
+        echo "$TODOS"
+    fi
+fi
+
+echo "=== pre-commit check passed ==="
+exit 0

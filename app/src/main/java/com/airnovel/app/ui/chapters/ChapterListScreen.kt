@@ -1,6 +1,5 @@
 package com.airnovel.app.ui.chapters
 
-import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -164,28 +163,19 @@ fun ChapterListScreen(
                             uiState.chapters,
                             key = { _, chapter -> chapter.id }
                         ) { index, chapter ->
-                            AnimatedVisibility(
-                                visible = true,
-                                enter = fadeIn(animationSpec = tween(300 + index * 30)) +
-                                        slideInVertically(
-                                            initialOffsetY = { it / 4 },
-                                            animationSpec = tween(300 + index * 30)
-                                        )
-                            ) {
-                                ModernChapterItem(
-                                    chapter = chapter,
-                                    isRead = uiState.readStatus[chapter.id.toString()] ?: false,
-                                    onClick = {
-                                        viewModel.markAsRead(chapter.id.toString())
-                                        onChapterClick(
-                                            bookId,
-                                            chapter.id,
-                                            bookTitle,
-                                            index
-                                        )
-                                    }
-                                )
-                            }
+                            ModernChapterItem(
+                                chapter = chapter,
+                                isRead = uiState.readStatus[chapter.id.toString()] ?: false,
+                                onClick = {
+                                    viewModel.markAsRead(chapter.id.toString())
+                                    onChapterClick(
+                                        bookId,
+                                        chapter.id,
+                                        bookTitle,
+                                        index
+                                    )
+                                }
+                            )
                         }
                     }
                 }
