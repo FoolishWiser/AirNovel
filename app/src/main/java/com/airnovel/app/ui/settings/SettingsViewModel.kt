@@ -64,14 +64,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _uiState.value = _uiState.value.copy(isTesting = true, testResult = null)
 
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                RetrofitClient.testConnection(url) { success, message ->
-                    _uiState.value = _uiState.value.copy(
-                        isTesting = false,
-                        testResult = message,
-                        testSuccess = success
-                    )
-                }
+            RetrofitClient.testConnection(url) { success, message ->
+                _uiState.value = _uiState.value.copy(
+                    isTesting = false,
+                    testResult = message,
+                    testSuccess = success
+                )
             }
         }
     }

@@ -39,7 +39,8 @@ class UpdateCheckWorker(
                         val lastKnownChapterId = readStatusManager.getLastKnownChapterId()
 
                         for (item in updates) {
-                            if (lastKnownChapterId == null || item.chapterId.toString() > lastKnownChapterId) {
+                            val lastKnown = lastKnownChapterId?.toIntOrNull()
+                            if (lastKnown == null || item.chapterId > lastKnown) {
                                 notificationHelper.showUpdateNotification(
                                     bookTitle = item.bookTitle,
                                     chapterTitle = item.chapterTitle,

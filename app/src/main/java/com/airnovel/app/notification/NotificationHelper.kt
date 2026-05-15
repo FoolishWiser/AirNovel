@@ -9,10 +9,14 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.airnovel.app.MainActivity
 
+import java.util.concurrent.atomic.AtomicInteger
+
 class NotificationHelper(private val context: Context) {
 
     private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    private val requestCodeCounter = AtomicInteger(0)
 
     init {
         createNotificationChannel()
@@ -47,7 +51,7 @@ class NotificationHelper(private val context: Context) {
 
         val pendingIntent = PendingIntent.getActivity(
             context,
-            System.currentTimeMillis().toInt(),
+            requestCodeCounter.getAndIncrement(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

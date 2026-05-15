@@ -26,14 +26,14 @@ object RetrofitClient {
 
     fun initialize(url: String) {
         val normalizedUrl = normalizeUrl(url)
-        if (normalizedUrl == baseUrl && retrofit != null) return
+        if (normalizedUrl == baseUrl && apiService != null) return
         baseUrl = normalizedUrl
         retrofit = Retrofit.Builder()
             .baseUrl(normalizedUrl)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-        apiService = retrofit?.create(ApiService::class.java)
+        apiService = retrofit!!.create(ApiService::class.java)
     }
 
     fun getApiService(): ApiService {

@@ -43,7 +43,9 @@ class ReadStatusManager(context: Context) {
                 val bookId = parts[0]
                 val chapterId = parts[1]
                 val current = result[bookId]
-                if (current == null || chapterId > current) {
+                val currentInt = current?.toIntOrNull()
+                val chapterIdInt = chapterId.toIntOrNull()
+                if (current == null || (currentInt != null && chapterIdInt != null && chapterIdInt > currentInt)) {
                     result[bookId] = chapterId
                 }
             }

@@ -1,5 +1,15 @@
 # AirNovel
 
+## v1.1.1
+
+### Bug Fixes
+- 修复 `UpdateCheckWorker` 中章节 ID 字符串比较错误（"10" < "2" 问题）
+- 修复 `ReadStatusManager` 中 getLatestReadChapterIds 字符串比较导致的章节排序错误
+- 修复 `RetrofitClient.initialize` 重复调用时 apiService 未更新的逻辑缺陷
+- 移除 `SettingsViewModel` 中多余的 Dispatchers.IO 嵌套包装
+- 移除 `BookshelfScreen` 中无效的 pressed 状态变量
+- 修复 `NotificationHelper` 中 requestCode 使用时间戳可能导致冲突的问题
+
 ## v1.1.0
 
 - 全面 UI 现代化升级：Material 3 新配色、卡片圆角阴影优化、骨架屏加载

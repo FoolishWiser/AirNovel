@@ -253,8 +253,6 @@ fun BookshelfScreen(
 
 @Composable
 fun ModernBookCard(book: Book, onClick: () -> Unit) {
-    var pressed by remember { mutableStateOf(false) }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -263,7 +261,7 @@ fun ModernBookCard(book: Book, onClick: () -> Unit) {
                 indication = null
             ) { onClick() },
         shape = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (pressed) 1.dp else 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column {
