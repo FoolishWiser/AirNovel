@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
         val notificationChapterId = intent?.getStringExtra("chapterId")
 
         setContent {
-            val prefsManager = remember { PreferencesManager(this@MainActivity) }
+            val prefsManager = remember { prefs }
             val followSystem = prefsManager.followSystemTheme
             val isDarkMode = prefsManager.isDarkMode
             val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()

@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 data class ChapterListUiState(
     val bookTitle: String = "",
     val chapters: List<Chapter> = emptyList(),
-    val readStatus: Map<String, Boolean> = emptyMap(),
+    val readChapterIds: Set<String> = emptySet(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -39,14 +39,16 @@ class ChapterListViewModel(application: Application) : AndroidViewModel(applicat
             when (val result = repository.getChapters(bookId)) {
                 is Result.Success -> {
                     val chapters = result.data
-                    val readStatus = mutableMapOf<String, Boolean>()
+                    val readChapterIds = mutableSetOf<String>()
                     chapters.forEach { chapter ->
-                        readStatus[chapter.id.toString()] = readStatusManager.isRead(bookId, chapter.id.toString())
+                        if (readStatusManager.isRead(bookId, chapter.id.toString())) {
+                            readChapterIds.add(chapter.id.toString())
+                        }
                     }
                     ChapterCache.putChapterIds(bookId, chapters.map { it.id.toString() })
                     _uiState.value = _uiState.value.copy(
                         chapters = chapters,
-                        readStatus = readStatus,
+                        readChapterIds = readChapterIds,
                         isLoading = false
                     )
                 }
@@ -62,9 +64,9 @@ class ChapterListViewModel(application: Application) : AndroidViewModel(applicat
 
     fun markAsRead(chapterId: String) {
         readStatusManager.markAsRead(bookId, chapterId)
-        val updatedStatus = _uiState.value.readStatus.toMutableMap()
-        updatedStatus[chapterId] = true
-        _uiState.value = _uiState.value.copy(readStatus = updatedStatus)
+        val updatedSet = _uiState.value.readChapterIds.toMutableSet()
+        updatedSet.add(chapterId)
+        _uiState.value = _uiState.value.copy(readChapterIds = updatedSet)
     }
 
     fun dismissError() {

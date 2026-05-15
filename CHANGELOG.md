@@ -1,12 +1,22 @@
 # AirNovel
 
+## v1.1.3
+
+### Fixed
+- 回退 ReaderScreen 到 v1.1.0 的 Column+verticalScroll+BasicText 方案，消除 LazyColumn 分段落渲染导致的全局卡顿
+- 移除博 animateItem 修饰器，恢复 v1.1.0 的简洁渲染方式
+- 保留 derivedStateOf 颜色缓存优化作为长久改进
+- 保留 BookshelfScreen 外观流畅度改进（移除无效 pressed 状态变量）
+- 保留 ChapterListScreen BookInfoHeader 书籍信息头部
+
 ## v1.1.2
 
 ### Performance
-- 消除下拉刷新和列表滚动卡顿
-- 阅读器改用 LazyColumn 分段落渲染，仅渲染可见段落，大幅提升长文本流畅度
-- 使用 derivedStateOf 缓存颜色/字体变量，减少 90% 以上无效重组
-- 优化滚动进度监听，从每次 Composable 遍历改为 LazyColumn 阈值触发
+- 阅读器滚动进度改用 derivedStateOf 追踪，消除每次滚动更新 StateFlow 导致的**全屏重组**（核心卡顿根源）
+- 书架网格使用 Modifier.animateItem() 替代 AnimatedVisibility，兼顾动画顺滑与滚动性能
+- 章节列表使用 Modifier.animateItem() 替代 AnimatedVisibility，兼顾动画顺滑与滚动性能
+- 阅读器改用 LazyColumn 分段落渲染，仅渲染可见段落
+- 使用 derivedStateOf 缓存颜色/字体变量，减少无效重组
 
 ### UI Improvements
 - 章节列表新增书籍信息头部（渐变封面缩略图 + 书名 + "章节列表"）

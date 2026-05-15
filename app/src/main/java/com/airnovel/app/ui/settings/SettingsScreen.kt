@@ -223,9 +223,13 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    // 局部 Slider 状态，拖拽时不触发 StateFlow 重组
+                    var localFontSize by remember { mutableFloatStateOf(uiState.readerFontSize) }
+                    LaunchedEffect(uiState.readerFontSize) { localFontSize = uiState.readerFontSize }
                     Slider(
-                        value = uiState.readerFontSize,
-                        onValueChange = { viewModel.setFontSize(it) },
+                        value = localFontSize,
+                        onValueChange = { localFontSize = it },
+                        onValueChangeFinished = { viewModel.setFontSize(localFontSize) },
                         valueRange = 12f..32f,
                         steps = 19,
                         modifier = Modifier.fillMaxWidth()
@@ -244,9 +248,12 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    var localLineSpacing by remember { mutableFloatStateOf(uiState.readerLineSpacing) }
+                    LaunchedEffect(uiState.readerLineSpacing) { localLineSpacing = uiState.readerLineSpacing }
                     Slider(
-                        value = uiState.readerLineSpacing,
-                        onValueChange = { viewModel.setLineSpacing(it) },
+                        value = localLineSpacing,
+                        onValueChange = { localLineSpacing = it },
+                        onValueChangeFinished = { viewModel.setLineSpacing(localLineSpacing) },
                         valueRange = 1.0f..2.5f,
                         steps = 14,
                         modifier = Modifier.fillMaxWidth()
@@ -299,10 +306,13 @@ fun SettingsScreen(
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
+                    var localCheckInterval by remember { mutableFloatStateOf((uiState.checkIntervalMinutes / 15f).coerceIn(1f, 16f)) }
+                    LaunchedEffect(uiState.checkIntervalMinutes) { localCheckInterval = (uiState.checkIntervalMinutes / 15f).coerceIn(1f, 16f) }
                     Slider(
-                        value = (uiState.checkIntervalMinutes / 15f).coerceIn(1f, 16f),
-                        onValueChange = {
-                            viewModel.setCheckInterval((it * 15).toLong().coerceIn(15, 240))
+                        value = localCheckInterval,
+                        onValueChange = { localCheckInterval = it },
+                        onValueChangeFinished = {
+                            viewModel.setCheckInterval((localCheckInterval * 15).toLong().coerceIn(15, 240))
                         },
                         valueRange = 1f..16f,
                         steps = 15,

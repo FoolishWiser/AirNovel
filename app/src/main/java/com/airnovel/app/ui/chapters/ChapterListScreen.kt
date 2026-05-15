@@ -170,9 +170,8 @@ fun ChapterListScreen(
                             uiState.chapters,
                             key = { _, chapter -> chapter.id }
                         ) { index, chapter ->
-                            val isRead = remember(chapter.id, uiState.readStatus) {
-                                uiState.readStatus[chapter.id.toString()] ?: false
-                            }
+                            val chapterIdStr = chapter.id.toString()
+                            val isRead = chapterIdStr in uiState.readChapterIds
                             ModernChapterItem(
                                 chapter = chapter,
                                 isRead = isRead,
