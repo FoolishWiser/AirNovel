@@ -5,11 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,7 +34,6 @@ import com.airnovel.app.ui.theme.ReaderBgDay
 import com.airnovel.app.ui.theme.ReaderBgNight
 import com.airnovel.app.ui.theme.ReaderTextDay
 import com.airnovel.app.ui.theme.ReaderTextNight
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,31 +51,36 @@ fun ReaderScreen(
     var showControls by remember { mutableStateOf(true) }
     var showSettings by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()
+    val listState = rememberLazyListState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LaunchedEffect(bookId, chapterId) {
         viewModel.initialize(bookId, chapterId, bookTitle, chapterIndex, chapterIdList)
     }
 
+    // Throttled scroll progress tracking
     LaunchedEffect(Unit) {
-        var lastProgress = -1f
-        val maxScroll = (scrollState.maxValue).coerceAtLeast(1)
-        val totalForMax = if (maxScroll > 0) maxScroll.toFloat() else 1f
-        snapshotFlow { scrollState.value }
-            .collect { value ->
-                val progress = value.toFloat() / totalForMax
-                if (kotlin.math.abs(progress - lastProgress) >= 0.01f) {
-                    lastProgress = progress
-                    viewModel.updateScrollProgress(progress)
+        var lastReported = -0.01f
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                val totalItems = maxOf(listState.layoutInfo.totalItemsCount, 1)
+                val progress = (index.toFloat() + offset.toFloat() / 1000f) / totalItems
+                if (kotlin.math.abs(progress - lastReported) >= 0.008f) {
+                    lastReported = progress
+                    viewModel.updateScrollProgress(progress.coerceIn(0f, 1f))
                 }
             }
     }
 
-    val bgColor = if (uiState.isNightMode) ReaderBgNight else ReaderBgDay
-    val textColor = if (uiState.isNightMode) ReaderTextNight else ReaderTextDay
-    val uiColor = if (uiState.isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF5A5A5A)
-    val fontFamily = if (uiState.useSerif) FontFamily.Serif else FontFamily.Default
+    val bgColor by remember { derivedStateOf { if (uiState.isNightMode) ReaderBgNight else ReaderBgDay } }
+    val textColor by remember { derivedStateOf { if (uiState.isNightMode) ReaderTextNight else ReaderTextDay } }
+    val uiColor by remember { derivedStateOf { if (uiState.isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF5A5A5A) } }
+    val fontFamily by remember { derivedStateOf { if (uiState.useSerif) FontFamily.Serif else FontFamily.Default } }
+
+    // Split content into stable paragraphs for paged rendering
+    val paragraphs = remember(uiState.content) {
+        uiState.content.split("\n").map { it.trim() }.filter { it.isNotBlank() }
+    }
 
     // Settings Bottom Sheet
     if (showSettings) {
@@ -115,12 +118,12 @@ fun ReaderScreen(
                             if (dragAmount < -60) {
                                 scope.launch {
                                     viewModel.goToNextChapter()
-                                    scrollState.scrollTo(0)
+                                    listState.scrollToItem(0)
                                 }
                             } else if (dragAmount > 60) {
                                 scope.launch {
                                     viewModel.goToPrevChapter()
-                                    scrollState.scrollTo(0)
+                                    listState.scrollToItem(0)
                                 }
                             }
                         }
@@ -185,7 +188,7 @@ fun ReaderScreen(
                 }
             }
 
-            // Content
+            // Content area with LazyColumn for paged paragraph rendering
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -247,102 +250,116 @@ fun ReaderScreen(
                     }
 
                     else -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(scrollState)
-                                .padding(horizontal = 28.dp)
-                                .padding(top = 20.dp, bottom = 20.dp)
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 28.dp),
                         ) {
-                            // Chapter title with decorative line
-                            Text(
-                                text = uiState.chapterTitle,
-                                style = TextStyle(
-                                    fontFamily = FontFamily.Serif,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp,
-                                    color = textColor,
-                                    lineHeight = 28.sp
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 24.dp),
-                                textAlign = TextAlign.Center
-                            )
-
-                            // Decorative divider
-                            Box(
-                                modifier = Modifier
-                                    .width(60.dp)
-                                    .height(2.dp)
-                                    .background(textColor.copy(alpha = 0.2f))
-                                    .align(Alignment.CenterHorizontally)
-                            )
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            // Content
-                            BasicText(
-                                text = uiState.content,
-                                style = TextStyle(
-                                    fontFamily = fontFamily,
-                                    fontWeight = FontWeight.Normal,
-                                    fontSize = uiState.fontSize.sp,
-                                    lineHeight = (uiState.fontSize * uiState.lineSpacing).sp,
-                                    color = textColor
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Spacer(modifier = Modifier.height(40.dp))
-
-                            // Chapter nav
-                            Card(
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = textColor.copy(alpha = 0.05f)
-                                )
-                            ) {
-                                Row(
+                            // Chapter title
+                            item(key = "chapter_title") {
+                                Text(
+                                    text = uiState.chapterTitle,
+                                    style = TextStyle(
+                                        fontFamily = FontFamily.Serif,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 20.sp,
+                                        color = textColor,
+                                        lineHeight = 28.sp
+                                    ),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    TextButton(
-                                        onClick = {
-                                            viewModel.goToPrevChapter()
-                                            scope.launch { scrollState.scrollTo(0) }
-                                        },
-                                        enabled = uiState.hasPrevChapter
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.ArrowBack,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("上一章")
-                                    }
-
-                                    TextButton(
-                                        onClick = {
-                                            viewModel.goToNextChapter()
-                                            scope.launch { scrollState.scrollTo(0) }
-                                        },
-                                        enabled = uiState.hasNextChapter
-                                    ) {
-                                        Text("下一章")
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.ArrowForward,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
+                                        .padding(top = 20.dp, bottom = 24.dp),
+                                    textAlign = TextAlign.Center
+                                )
                             }
 
-                            Spacer(modifier = Modifier.height(16.dp))
+                            // Decorative divider
+                            item(key = "divider") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(60.dp)
+                                            .height(2.dp)
+                                            .background(textColor.copy(alpha = 0.2f))
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(24.dp))
+                            }
+
+                            // Content paragraphs (paged rendering)
+                            itemsIndexed(
+                                items = paragraphs,
+                                key = { index, _ -> "p_$index" }
+                            ) { _, paragraph ->
+                                Text(
+                                    text = paragraph,
+                                    style = TextStyle(
+                                        fontFamily = fontFamily,
+                                        fontWeight = FontWeight.Normal,
+                                        fontSize = uiState.fontSize.sp,
+                                        lineHeight = (uiState.fontSize * uiState.lineSpacing).sp,
+                                        color = textColor
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp)
+                                )
+                            }
+
+                            // Chapter nav
+                            item(key = "chapter_nav") {
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = textColor.copy(alpha = 0.05f)
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceEvenly
+                                    ) {
+                                        TextButton(
+                                            onClick = {
+                                                viewModel.goToPrevChapter()
+                                                scope.launch { listState.scrollToItem(0) }
+                                            },
+                                            enabled = uiState.hasPrevChapter
+                                        ) {
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.ArrowBack,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("上一章")
+                                        }
+
+                                        TextButton(
+                                            onClick = {
+                                                viewModel.goToNextChapter()
+                                                scope.launch { listState.scrollToItem(0) }
+                                            },
+                                            enabled = uiState.hasNextChapter
+                                        ) {
+                                            Text("下一章")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.ArrowForward,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
                         }
                     }
                 }

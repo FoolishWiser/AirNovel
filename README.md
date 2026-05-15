@@ -131,6 +131,7 @@ app/src/main/java/com/airnovel/app/
 
 ## 版本历史
 
+- **v1.1.2** — 深度性能重构：PullToRefreshBox 替换 SwipeRefresh、阅读器 LazyColumn 分段落渲染、章节列表书籍信息头部、derivedStateOf 减少重组
 - **v1.1.1** — 性能优化（移除 AnimatedVisibility 卡顿、优化滚动监听）、修复章节排序错误、修复 RetrofitClient 初始化缺陷、修复通知 requestCode 冲突
 - **v1.1.0** — UI 全面现代化升级、Material 3 新配色、底部设置面板、骨架屏加载、动画流畅度提升
 - **v1.0.0** — 初始发布

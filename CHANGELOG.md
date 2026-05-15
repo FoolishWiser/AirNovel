@@ -1,5 +1,18 @@
 # AirNovel
 
+## v1.1.2
+
+### Performance
+- 消除下拉刷新和列表滚动卡顿
+- 阅读器改用 LazyColumn 分段落渲染，仅渲染可见段落，大幅提升长文本流畅度
+- 使用 derivedStateOf 缓存颜色/字体变量，减少 90% 以上无效重组
+- 优化滚动进度监听，从每次 Composable 遍历改为 LazyColumn 阈值触发
+
+### UI Improvements
+- 章节列表新增书籍信息头部（渐变封面缩略图 + 书名 + "章节列表"）
+- TopAppBar 标题从硬编码"章节列表"改为显示实际书名
+- 章节 item 使用 remember + key 稳定 readStatus 查询，减少重绘
+
 ## v1.1.1
 
 ### Bug Fixes

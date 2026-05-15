@@ -42,8 +42,8 @@ Daemon will be stopped at the end of the build
 > Task :app:writeDebugSigningConfigVersions UP-TO-DATE
 
 > Task :app:compileDebugKotlin
-w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:100:51 'val Icons.Filled.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.LibraryBooks.
-w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:198:21 'fun SwipeRefresh(state: SwipeRefreshState, onRefresh: () -> Unit, modifier: Modifier = ..., swipeEnabled: Boolean = ..., refreshTriggerDistance: Dp = ..., indicatorAlignment: Alignment = ..., indicatorPadding: PaddingValues = ..., indicator: @Composable() ComposableFunction2<@ParameterName(...) SwipeRefreshState, @ParameterName(...) Dp, Unit> = ..., clipIndicatorToPadding: Boolean = ..., content: @Composable() ComposableFunction0<Unit>): Unit' is deprecated. accompanist/swiperefresh is deprecated.
+w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:98:51 'val Icons.Filled.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.LibraryBooks.
+w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:196:21 'fun SwipeRefresh(state: SwipeRefreshState, onRefresh: () -> Unit, modifier: Modifier = ..., swipeEnabled: Boolean = ..., refreshTriggerDistance: Dp = ..., indicatorAlignment: Alignment = ..., indicatorPadding: PaddingValues = ..., indicator: @Composable() ComposableFunction2<@ParameterName(...) SwipeRefreshState, @ParameterName(...) Dp, Unit> = ..., clipIndicatorToPadding: Boolean = ..., content: @Composable() ComposableFunction0<Unit>): Unit' is deprecated. accompanist/swiperefresh is deprecated.
  The androidx.compose equivalent of SwipeRefresh is Modifier.pullRefresh().
  This is often migrated as:
  Box(modifier = Modifier.pullRefresh(refreshState)) { 
@@ -52,10 +52,10 @@ w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/Bookshelf
  }
  
  For more migration information, please visit https://google.github.io/accompanist/swiperefresh/#migration.
-w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:199:33 'fun rememberSwipeRefreshState(isRefreshing: Boolean): SwipeRefreshState' is deprecated. accompanist/swiperefresh is deprecated.
+w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:197:33 'fun rememberSwipeRefreshState(isRefreshing: Boolean): SwipeRefreshState' is deprecated. accompanist/swiperefresh is deprecated.
      The androidx.compose equivalent of rememberSwipeRefreshState() is rememberPullRefreshState().
      For more migration information, please visit https://google.github.io/accompanist/swiperefresh/#migration.
-w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:209:55 'val Icons.Filled.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.MenuBook.
+w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/bookshelf/BookshelfScreen.kt:207:55 'val Icons.Filled.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.MenuBook.
 w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/settings/SettingsScreen.kt:200:50 'val Icons.Filled.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.MenuBook.
 w: file:///E:/Airnovel/app/src/main/java/com/airnovel/app/ui/theme/Theme.kt:76:20 'var statusBarColor: Int' is deprecated. Deprecated in Java.
 
