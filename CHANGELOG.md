@@ -1,5 +1,12 @@
 # AirNovel
 
+## v1.1.5
+
+### Features
+- 设置页新增「版本更新」功能：通过 GitHub Releases API 检查最新版本
+- 提供 3 个下载镜像选项：直连 / ghproxy.net / ghproxy.cn
+- 点击下载按钮直接浏览器跳转到 APK 下载链接
+
 ## v1.1.4
 
 ### Performance

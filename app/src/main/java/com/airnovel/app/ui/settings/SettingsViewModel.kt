@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.airnovel.app.data.api.RetrofitClient
 import com.airnovel.app.data.local.PreferencesManager
+import com.airnovel.app.data.update.UpdateChecker
+import com.airnovel.app.data.update.UpdateInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +24,11 @@ data class SettingsUiState(
     val isDarkMode: Boolean = false,
     val readerFontSize: Float = 18f,
     val readerLineSpacing: Float = 1.6f,
-    val readerUseSerif: Boolean = true
+    val readerUseSerif: Boolean = true,
+    val isCheckingUpdate: Boolean = false,
+    val updateInfo: UpdateInfo? = null,
+    val updateError: String? = null,
+    val updateMirrorIndex: Int = 0
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -44,7 +50,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             isDarkMode = prefs.isDarkMode,
             readerFontSize = prefs.readerFontSize,
             readerLineSpacing = prefs.readerLineSpacing,
-            readerUseSerif = prefs.readerUseSerif
+            readerUseSerif = prefs.readerUseSerif,
+            updateMirrorIndex = prefs.updateMirrorIndex
         )
     }
 
@@ -72,6 +79,41 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 )
             }
         }
+    }
+
+    fun checkUpdate() {
+        _uiState.value = _uiState.value.copy(isCheckingUpdate = true, updateInfo = null, updateError = null)
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                UpdateChecker.checkUpdate()
+            }
+            result.fold(
+                onSuccess = { info ->
+                    _uiState.value = _uiState.value.copy(
+                        isCheckingUpdate = false,
+                        updateInfo = info,
+                        updateError = null
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isCheckingUpdate = false,
+                        updateInfo = null,
+                        updateError = e.localizedMessage ?: "检查更新失败"
+                    )
+                }
+            )
+        }
+    }
+
+    fun setUpdateMirror(index: Int) {
+        _uiState.value = _uiState.value.copy(updateMirrorIndex = index)
+        prefs.updateMirrorIndex = index
+    }
+
+    fun getDownloadUrl(): String? {
+        val info = _uiState.value.updateInfo ?: return null
+        return UpdateChecker.getDownloadUrlWithMirror(info.downloadUrl, _uiState.value.updateMirrorIndex)
     }
 
     fun saveSettings() {

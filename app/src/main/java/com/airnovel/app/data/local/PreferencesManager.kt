@@ -48,6 +48,10 @@ class PreferencesManager(context: Context) {
         prefs.edit().clear().apply()
     }
 
+    var updateMirrorIndex: Int
+        get() = prefs.getInt(KEY_UPDATE_MIRROR, 0)
+        set(value) = prefs.edit().putInt(KEY_UPDATE_MIRROR, value).apply()
+
     companion object {
         private const val PREFS_NAME = "airnovel_prefs"
         private const val KEY_SERVER_URL = "server_url"
@@ -59,5 +63,6 @@ class PreferencesManager(context: Context) {
         private const val KEY_LINE_SPACING = "line_spacing"
         private const val KEY_USE_SERIF = "use_serif"
         private const val KEY_READER_NIGHT = "reader_night"
+        private const val KEY_UPDATE_MIRROR = "update_mirror"
     }
 }
