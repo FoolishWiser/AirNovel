@@ -64,7 +64,7 @@ jobs:
               --arg name "$name" \
               --arg body "$body" \
               --argjson pre "$prerelease" \
-              '{access_token: $at, tag_name: $tag, name: $name, body: $body, prerelease: $pre}')
+              '{access_token: $at, tag_name: $tag, name: $name, body: $body, prerelease: $pre, target_commitish: "main"}')
 
             RESP=$(curl -sS -X POST \
               -H "Content-Type: application/json" \
