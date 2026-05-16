@@ -14,7 +14,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 连接 Gitee 并推送 Tag
+      # 推送 Tag 到 Gitee（含连接测试）
       - name: Push tags to Gitee
         env:
           GITEE_USER: ${{ secrets.GITEE_USERNAME }}
@@ -22,33 +22,17 @@ jobs:
           GITEE_REPO: ${{ secrets.GITEE_REPO }}
         run: |
           set -e
-
-          # 1. 检查必要变量是否为空
           if [ -z "$GITEE_USER" ] || [ -z "$GITEE_TOKEN" ] || [ -z "$GITEE_REPO" ]; then
-            echo "❌ 缺少必要的 Secret，请检查 GITEE_USERNAME / GITEE_TOKEN / GITEE_REPO 是否已全部配置"
+            echo "❌ 缺少必要的 Secret，请检查 GITEE_USERNAME / GITEE_TOKEN / GITEE_REPO"
             exit 1
           fi
-
           REMOTE_URL="https://${GITEE_USER}:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/${GITEE_REPO}.git"
-
-          # 2. 打印安全地址（隐藏令牌）
           SAFE_URL="https://${GITEE_USER}:***@gitee.com/${GITEE_USER}/${GITEE_REPO}.git"
           echo "👉 远程地址: $SAFE_URL"
-
-          # 3. 测试能否连接 Gitee 仓库
           echo "🔍 正在测试 Gitee 仓库连接..."
           git ls-remote --exit-code "$REMOTE_URL" HEAD
-          if [ $? -ne 0 ]; then
-            echo "❌ 无法访问 Gitee 仓库，请确认："
-            echo "   - 仓库名和用户名是否正确"
-            echo "   - 私人令牌是否有效并勾选了 projects 权限"
-            exit 1
-          fi
           echo "✅ 连接成功"
-
-          # 4. 添加 remote 并推送
           git remote add gitee "$REMOTE_URL" || true
-
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "📦 手动触发：推送所有 Tag 到 Gitee..."
             git push gitee --tags --force
@@ -57,10 +41,9 @@ jobs:
             echo "📦 自动触发：推送 Tag $TAG_NAME 到 Gitee..."
             git push gitee "$TAG_NAME" --force
           fi
-
           echo "✅ Tag 推送完成"
 
-      # 同步 Release 及附件（保持你原来的步骤，不需改动）
+      # 同步 Release 及附件
       - name: Sync releases and assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -68,5 +51,91 @@ jobs:
           GITEE_USER: ${{ secrets.GITEE_USERNAME }}
           GITEE_REPO: ${{ secrets.GITEE_REPO }}
         run: |
-          # ... 保持原来的同步脚本，不用动 ...
-          # 如果你之前复制的是完整版，这里直接用就行
+          set -e
+
+          # 先获取 Gitee 上已有的 Release，避免重复创建报错
+          EXISTING_RELEASES=$(curl -sS "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN&per_page=100")
+          declare -A EXISTING_MAP
+          while read -r tag id; do
+            if [ -n "$tag" ] && [ -n "$id" ]; then
+              EXISTING_MAP["$tag"]="$id"
+            fi
+          done < <(echo "$EXISTING_RELEASES" | jq -r '.[] | "\(.tag_name) \(.id)"')
+
+          sync_release() {
+            local tag="$1"
+            local name="$2"
+            local body="$3"
+            local prerelease="$4"
+            local assets_json="$5"
+
+            echo "::group::Syncing release for tag: $tag"
+
+            # 如果 Gitee 已存在该 tag 的 Release，则跳过创建（附件也不再上传）
+            EXISTING_ID="${EXISTING_MAP[$tag]}"
+            if [ -n "$EXISTING_ID" ]; then
+              echo "⚠️  Release for tag $tag already exists on Gitee (id: $EXISTING_ID). Skipping."
+              echo "::endgroup::"
+              return 0
+            fi
+
+            # 创建 Release
+            PAYLOAD=$(jq -n \
+              --arg access_token "$GITEE_TOKEN" \
+              --arg tag_name "$tag" \
+              --arg name "$name" \
+              --arg body "$body" \
+              --argjson prerelease "$prerelease" \
+              '{access_token: $access_token, tag_name: $tag_name, name: $name, body: $body, prerelease: $prerelease}')
+
+            CREATE_RESP=$(curl -sS -X POST \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD" \
+              "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases")
+            RELEASE_ID=$(echo "$CREATE_RESP" | jq -r '.id')
+            if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+              echo "❌ 创建 Release 失败！API 返回："
+              echo "$CREATE_RESP" | jq .
+              echo "::endgroup::"
+              return 1
+            fi
+            echo "✅ Created Gitee release id: $RELEASE_ID"
+
+            # 上传附件
+            if [ "$assets_json" != "[]" ]; then
+              echo "📎 正在上传附件..."
+              echo "$assets_json" | jq -c '.[]' | while read -r asset; do
+                asset_name=$(echo "$asset" | jq -r '.name')
+                asset_url=$(echo "$asset" | jq -r '.url')
+                echo "  下载 $asset_name ..."
+                curl -sS -L -o "$asset_name" "$asset_url"
+                echo "  上传到 Gitee ..."
+                UPLOAD_RESP=$(curl -sS -X POST \
+                  -F "file=@$asset_name" \
+                  "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases/$RELEASE_ID/attach_files?access_token=$GITEE_TOKEN")
+                echo "  $UPLOAD_RESP" | jq .
+                rm -f "$asset_name"
+              done
+            fi
+            echo "::endgroup::"
+          }
+
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            NAME=$(jq -r '.release.name' $GITHUB_EVENT_PATH)
+            BODY=$(jq -r '.release.body' $GITHUB_EVENT_PATH)
+            PRERELEASE=$(jq -r '.release.prerelease' $GITHUB_EVENT_PATH)
+            ASSETS=$(jq -c '[.release.assets[] | {name: .name, url: .browser_download_url}]' $GITHUB_EVENT_PATH)
+            sync_release "$TAG_NAME" "$NAME" "$BODY" "$PRERELEASE" "$ASSETS"
+          else
+            echo "🔁 正在同步所有 GitHub Release..."
+            RELEASES=$(gh release list --limit 100 --json tagName,name,body,isPrerelease,assets)
+            echo "$RELEASES" | jq -c '.[]' | while read -r release; do
+              tag=$(echo "$release" | jq -r '.tagName')
+              name=$(echo "$release" | jq -r '.name')
+              body=$(echo "$release" | jq -r '.body')
+              prerelease=$(echo "$release" | jq -r '.isPrerelease')
+              assets=$(echo "$release" | jq -c '[.assets[] | {name: .name, url: .downloadUrl}]')
+              sync_release "$tag" "$name" "$body" "$prerelease" "$assets"
+            done
+          fi
