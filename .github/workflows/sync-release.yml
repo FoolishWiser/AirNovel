@@ -1,6 +1,8 @@
-name: Sync Releases to Gitee
+name: Sync to Gitee
 
 on:
+  push:
+    branches: [main]
   release:
     types: [published]
   workflow_dispatch:
@@ -9,131 +11,97 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Push tags to Gitee
+      - name: Sync code & tags to Gitee
         env:
           GITEE_USER: ${{ secrets.GITEE_USERNAME }}
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITEE_REPO: ${{ secrets.GITEE_REPO }}
         run: |
           set -e
-          if [ -z "$GITEE_USER" ] || [ -z "$GITEE_TOKEN" ] || [ -z "$GITEE_REPO" ]; then
-            echo "❌ 缺少必要的 Secret，请检查 GITEE_USERNAME / GITEE_TOKEN / GITEE_REPO"
-            exit 1
-          fi
-          REMOTE_URL="https://${GITEE_USER}:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/${GITEE_REPO}.git"
-          SAFE_URL="https://${GITEE_USER}:***@gitee.com/${GITEE_USER}/${GITEE_REPO}.git"
-          echo "👉 远程地址: $SAFE_URL"
-          echo "🔍 正在测试 Gitee 仓库连接..."
-          git ls-remote --exit-code "$REMOTE_URL" HEAD
-          echo "✅ 连接成功"
-          git remote add gitee "$REMOTE_URL" || true
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "📦 手动触发：推送所有 Tag 到 Gitee..."
-            git push gitee --tags --force
-          else
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            echo "📦 自动触发：推送 Tag $TAG_NAME 到 Gitee..."
-            git push gitee "$TAG_NAME" --force
-          fi
-          echo "✅ Tag 推送完成"
+          REMOTE="https://${GITEE_USER}:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/${GITEE_REPO}.git"
+          git remote add gitee "$REMOTE" 2>/dev/null || git remote set-url gitee "$REMOTE"
+          echo "Push main branch..."
+          git push gitee main --force
+          echo "Push all tags..."
+          git push gitee --tags --force
+          echo "OK"
 
-      - name: Sync releases and assets
+      - name: Sync release assets to Gitee
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITEE_USER: ${{ secrets.GITEE_USERNAME }}
           GITEE_REPO: ${{ secrets.GITEE_REPO }}
         run: |
           set -e
 
-          # 获取 Gitee 已有 Release，避免重复创建
-          EXISTING_RELEASES=$(curl -sS "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN&per_page=100")
+          # Collect existing Gitee releases
+          EXISTING=$(curl -sS \
+            "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN&per_page=100" \
+            | jq -r '.[] | "\(.tag_name) \(.id)"')
+
           declare -A EXISTING_MAP
-          while read -r tag id; do
-            if [ -n "$tag" ] && [ -n "$id" ]; then
-              EXISTING_MAP["$tag"]="$id"
-            fi
-          done < <(echo "$EXISTING_RELEASES" | jq -r '.[] | "\(.tag_name) \(.id)"')
+          while IFS=' ' read -r tag id; do
+            [ -n "$tag" ] && [ -n "$id" ] && EXISTING_MAP["$tag"]="$id"
+          done <<< "$EXISTING"
 
-          sync_release() {
-            local tag="$1"
-            local name="$2"
-            local body="$3"
-            local prerelease="$4"
-            local assets_json="$5"
+          sync_one() {
+            local tag="$1" name="$2" body="$3" prerelease="$4" assets_json="$5"
 
-            echo "::group::Syncing release for tag: $tag"
-
-            EXISTING_ID="${EXISTING_MAP[$tag]}"
-            if [ -n "$EXISTING_ID" ]; then
-              echo "⚠️  Release for tag $tag already exists on Gitee (id: $EXISTING_ID). Skipping."
-              echo "::endgroup::"
-              return 0
+            if [ -n "${EXISTING_MAP[$tag]}" ]; then
+              echo "Skip $tag (exists on Gitee)"
+              return
             fi
 
+            echo "Creating Gitee release $tag ..."
             PAYLOAD=$(jq -n \
-              --arg access_token "$GITEE_TOKEN" \
-              --arg tag_name "$tag" \
+              --arg at "$GITEE_TOKEN" \
+              --arg tag "$tag" \
               --arg name "$name" \
               --arg body "$body" \
-              --argjson prerelease "$prerelease" \
-              '{access_token: $access_token, tag_name: $tag_name, name: $name, body: $body, prerelease: $prerelease}')
+              --argjson pre "$prerelease" \
+              '{access_token: $at, tag_name: $tag, name: $name, body: $body, prerelease: $pre}')
 
-            CREATE_RESP=$(curl -sS -X POST \
+            RID=$(curl -sS -X POST \
               -H "Content-Type: application/json" \
               -d "$PAYLOAD" \
-              "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases")
-            RELEASE_ID=$(echo "$CREATE_RESP" | jq -r '.id')
-            if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
-              echo "❌ 创建 Release 失败！API 返回："
-              echo "$CREATE_RESP" | jq .
-              echo "::endgroup::"
-              return 1
-            fi
-            echo "✅ Created Gitee release id: $RELEASE_ID"
+              "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases" \
+              | jq -r '.id // empty')
 
-            if [ "$assets_json" != "[]" ]; then
-              echo "📎 正在上传附件..."
-              echo "$assets_json" | jq -c '.[]' | while read -r asset; do
-                asset_name=$(echo "$asset" | jq -r '.name')
-                asset_url=$(echo "$asset" | jq -r '.url')
-                echo "  下载 $asset_name ..."
-                curl -sS -L -o "$asset_name" "$asset_url"
-                echo "  上传到 Gitee ..."
-                UPLOAD_RESP=$(curl -sS -X POST \
-                  -F "file=@$asset_name" \
-                  "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases/$RELEASE_ID/attach_files?access_token=$GITEE_TOKEN")
-                echo "  $UPLOAD_RESP" | jq .
-                rm -f "$asset_name"
-              done
-            fi
-            echo "::endgroup::"
+            [ -z "$RID" ] && echo "FAIL" && return
+
+            echo "$assets_json" | jq -c '.[]' 2>/dev/null | while read -r asset; do
+              aname=$(echo "$asset" | jq -r '.name // empty')
+              aurl=$(echo "$asset" | jq -r '.url // .downloadUrl // empty')
+              [ -z "$aname" ] || [ -z "$aurl" ] && continue
+              echo "Upload $aname ..."
+              curl -sS -L -o "/tmp/$aname" "$aurl"
+              curl -sS -X POST \
+                -F "file=@/tmp/$aname" \
+                "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases/$RID/attach_files?access_token=$GITEE_TOKEN" > /dev/null
+              rm -f "/tmp/$aname"
+            done
           }
 
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            NAME=$(jq -r '.release.name' $GITHUB_EVENT_PATH)
-            BODY=$(jq -r '.release.body' $GITHUB_EVENT_PATH)
-            PRERELEASE=$(jq -r '.release.prerelease' $GITHUB_EVENT_PATH)
-            ASSETS=$(jq -c '[.release.assets[] | {name: .name, url: .browser_download_url}]' $GITHUB_EVENT_PATH)
-            sync_release "$TAG_NAME" "$NAME" "$BODY" "$PRERELEASE" "$ASSETS"
+            TAG=${GITHUB_REF#refs/tags/}
+            NAME=$(jq -r '.release.name' "$GITHUB_EVENT_PATH")
+            BODY=$(jq -r '.release.body' "$GITHUB_EVENT_PATH")
+            PRE=$(jq -r '.release.prerelease' "$GITHUB_EVENT_PATH")
+            ASSETS=$(jq -c '[.release.assets[] | {name, url: .browser_download_url}]' "$GITHUB_EVENT_PATH")
+            sync_one "$TAG" "$NAME" "$BODY" "$PRE" "$ASSETS"
           else
-            echo "🔁 正在同步所有 GitHub Release..."
-            TAGS=$(gh release list --limit 100 --json tagName --jq '.[].tagName')
-            while IFS= read -r tag; do
-              if [ -z "$tag" ]; then continue; fi
-              echo "::group::Processing tag: $tag"
+            gh release list --limit 100 --json tagName --jq '.[].tagName' | while read -r tag; do
+              [ -z "$tag" ] && continue
               DETAILS=$(gh release view "$tag" --json name,body,isPrerelease,assets)
-              name=$(echo "$DETAILS" | jq -r '.name')
-              body=$(echo "$DETAILS" | jq -r '.body')
-              prerelease=$(echo "$DETAILS" | jq -r '.isPrerelease')
-              assets=$(echo "$DETAILS" | jq -c '[.assets[] | {name: .name, url: (.url // .downloadUrl)}]')
-              sync_release "$tag" "$name" "$body" "$prerelease" "$assets"
-              echo "::endgroup::"
-            done <<< "$TAGS"
+              n=$(echo "$DETAILS" | jq -r '.name')
+              b=$(echo "$DETAILS" | jq -r '.body')
+              p=$(echo "$DETAILS" | jq -r '.isPrerelease')
+              a=$(echo "$DETAILS" | jq -c '[.assets[] | {name, url: (.url // .downloadUrl)}]')
+              sync_one "$tag" "$n" "$b" "$p" "$a"
+            done
           fi
