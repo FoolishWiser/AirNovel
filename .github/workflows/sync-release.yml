@@ -54,17 +54,12 @@ jobs:
         run: |
           set -e
 
-          # Delete all existing Gitee releases first (to fix order)
-          echo "Clearing existing Gitee releases..."
-          EXISTING_IDS=$(curl -sS \
+          # Check existing releases to avoid duplicates
+          echo "Fetching existing Gitee releases..."
+          curl -sS \
             "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN&per_page=100" \
-            | jq -r '.[].id')
-          for rid in $EXISTING_IDS; do
-            [ -z "$rid" ] && continue
-            curl -sS -X DELETE \
-              "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases/$rid?access_token=$GITEE_TOKEN" > /dev/null
-            echo "  Deleted release id=$rid"
-          done
+            | jq -r '.[].tag_name' > /tmp/existing_tags.txt
+          echo "Existing tags: $(cat /tmp/existing_tags.txt | tr '\n' ' ')"
 
           BUILD_APK() {
             local tag="$1"
@@ -86,6 +81,12 @@ jobs:
           CREATE_RELEASE() {
             local tag="$1" name="$2" body="$3" prerelease="$4"
             local safe_body="${body:-AirNovel $tag 版本发布}"
+
+            # Skip if already exists on Gitee
+            if grep -qxF "$tag" /tmp/existing_tags.txt 2>/dev/null; then
+              echo "Skip $tag (already exists on Gitee)"
+              return
+            fi
 
             echo "Creating Gitee release $tag ..."
             PAYLOAD=$(jq -n \
