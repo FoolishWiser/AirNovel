@@ -54,12 +54,6 @@ jobs:
 
           sync_one() {
             local tag="$1" name="$2" body="$3" prerelease="$4" assets_json="$5"
-
-            if [ -n "${EXISTING_MAP[$tag]}" ]; then
-              echo "Skip $tag (exists on Gitee)"
-              return
-            fi
-
             echo "Creating Gitee release $tag ..."
             # Gitee requires non-empty body
             local safe_body="${body:-AirNovel $tag 版本发布}"
@@ -105,7 +99,7 @@ jobs:
             sync_one "$TAG" "$NAME" "$BODY" "$PRE" "$ASSETS"
           else
             # Iterate over all git tags (not just GitHub Releases)
-            for tag in $(git tag --sort=version:refname); do
+            for tag in $(git tag | sort -V); do
               [ -z "$tag" ] && continue
               # Try to get GitHub Release details, fallback to tag-only
               if DETAILS=$(gh release view "$tag" --json name,body,isPrerelease,assets 2>/dev/null); then
