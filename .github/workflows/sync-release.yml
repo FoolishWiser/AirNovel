@@ -23,12 +23,13 @@ jobs:
 
       - name: Setup Android SDK
         run: |
-          # Use sdkmanager to install required platform
           echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             "platforms;android-35" \
             "build-tools;35.0.0" 2>/dev/null || true
-          # Create local.properties
           echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Sync code & tags to Gitee
         env:
@@ -45,7 +46,7 @@ jobs:
           git push gitee --tags --force
           echo "OK"
 
-      - name: Sync releases to Gitee
+      - name: Build APK & Sync releases to Gitee
         if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
@@ -54,37 +55,18 @@ jobs:
         run: |
           set -e
 
-          # Check existing releases to avoid duplicates
-          echo "Fetching existing Gitee releases..."
+          # Fetch existing Gitee releases to skip duplicates
           curl -sS \
             "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN&per_page=100" \
             | jq -r '.[].tag_name' > /tmp/existing_tags.txt
-          echo "Existing tags: $(cat /tmp/existing_tags.txt | tr '\n' ' ')"
 
-          BUILD_APK() {
-            local tag="$1"
-            echo "::group::Building APK for $tag ..."
-            git checkout "$tag" 2>/dev/null || true
-            chmod +x gradlew 2>/dev/null || true
-            ./gradlew :app:assembleDebug --no-daemon 2>&1 || true
-            local apk="app/build/outputs/apk/debug/app-debug.apk"
-            if [ -f "$apk" ]; then
-              cp "$apk" "/tmp/airnovel-${tag}.apk"
-              echo "APK ready: /tmp/airnovel-${tag}.apk"
-            else
-              echo "No APK built for $tag"
-            fi
-            git checkout main 2>/dev/null || true
-            echo "::endgroup::"
-          }
-
-          CREATE_RELEASE() {
+          create_release() {
             local tag="$1" name="$2" body="$3" prerelease="$4"
             local safe_body="${body:-AirNovel $tag 版本发布}"
 
-            # Skip if already exists on Gitee
+            # Skip if already exists
             if grep -qxF "$tag" /tmp/existing_tags.txt 2>/dev/null; then
-              echo "Skip $tag (already exists on Gitee)"
+              echo "Skip $tag (exists on Gitee)"
               return
             fi
 
@@ -94,7 +76,7 @@ jobs:
               --arg tag "$tag" \
               --arg name "$name" \
               --arg body "$safe_body" \
-              --argjson pre "$prerelease" \
+              --argjson pre "${prerelease:-false}" \
               '{access_token: $at, tag_name: $tag, name: $name, body: $body, prerelease: $pre, target_commitish: "main"}')
 
             RESP=$(curl -sS -X POST \
@@ -109,15 +91,31 @@ jobs:
               return
             fi
 
-            # Upload APK if available
+            # Upload pre-built APK if available
             local apk="/tmp/airnovel-${tag}.apk"
             if [ -f "$apk" ]; then
               echo "Uploading APK ..."
-              UPLOAD_RESP=$(curl -sS -X POST \
+              curl -sS -X POST \
                 -F "file=@$apk" \
-                "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases/$RID/attach_files?access_token=$GITEE_TOKEN")
-              echo "$UPLOAD_RESP" | jq -r '.name // "Upload done"'
+                "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases/$RID/attach_files?access_token=$GITEE_TOKEN" \
+                | jq -r '.name // "Upload done"'
             fi
+          }
+
+          build_apk() {
+            local tag="$1"
+            echo "::group::Building APK for $tag"
+            git checkout "$tag" 2>/dev/null
+            chmod +x gradlew 2>/dev/null || true
+            ./gradlew :app:assembleDebug --no-daemon 2>&1 || echo "Build failed for $tag"
+            if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+              cp "app/build/outputs/apk/debug/app-debug.apk" "/tmp/airnovel-${tag}.apk"
+              echo "APK ready for $tag"
+            else
+              echo "No APK for $tag"
+            fi
+            git checkout main 2>/dev/null
+            echo "::endgroup::"
           }
 
           if [[ "${{ github.event_name }}" == "release" ]]; then
@@ -125,14 +123,11 @@ jobs:
             NAME=$(jq -r '.release.name' "$GITHUB_EVENT_PATH")
             BODY=$(jq -r '.release.body' "$GITHUB_EVENT_PATH")
             PRE=$(jq -r '.release.prerelease' "$GITHUB_EVENT_PATH")
-            # Build APK for this release
-            BUILD_APK "$TAG"
-            CREATE_RELEASE "$TAG" "$NAME" "$BODY" "$PRE"
+            build_apk "$TAG"
+            create_release "$TAG" "$NAME" "$BODY" "$PRE"
           else
-            # workflow_dispatch: process all tags in ascending order
             for tag in $(git tag | sort -V); do
               [ -z "$tag" ] && continue
-              # Try to get GitHub Release details, fallback to tag-only
               if DETAILS=$(gh release view "$tag" --json name,body,isPrerelease 2>/dev/null); then
                 n=$(echo "$DETAILS" | jq -r '.name')
                 b=$(echo "$DETAILS" | jq -r '.body')
@@ -140,7 +135,7 @@ jobs:
               else
                 n="$tag"; b=""; p="false"
               fi
-              BUILD_APK "$tag"
-              CREATE_RELEASE "$tag" "$n" "$b" "$p"
+              build_apk "$tag"
+              create_release "$tag" "$n" "$b" "$p"
             done
           fi
