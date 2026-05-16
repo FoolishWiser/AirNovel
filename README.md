@@ -131,6 +131,7 @@ app/src/main/java/com/airnovel/app/
 
 ## 版本历史
 
+- **v1.1.4** — 移除 SwipeRefresh 消除首页卡顿、章节列表新增书籍简介、设置 Slider 局部状态优化、阅读器进度条修复
 - **v1.1.3** — 回退 ReaderScreen 为 Column+verticalScroll+BasicText 方案修复卡顿
 - **v1.1.2** — 深度性能重构：PullToRefreshBox 替换 SwipeRefresh、阅读器 LazyColumn 分段落渲染、章节列表书籍信息头部、derivedStateOf 减少重组
 - **v1.1.1** — 性能优化（移除 AnimatedVisibility 卡顿、优化滚动监听）、修复章节排序错误、修复 RetrofitClient 初始化缺陷、修复通知 requestCode 冲突

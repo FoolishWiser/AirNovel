@@ -1,5 +1,18 @@
 # AirNovel
 
+## v1.1.4
+
+### Performance
+- 移除 BookshelfScreen 的 SwipeRefresh（Accompanist 已弃用，是首页卡顿根源），改用手动刷新按钮
+- 设置页 Slider 改用局部 mutableFloatStateOf + onValueChangeFinished，拖拽时不触发全屏 StateFlow 重组
+- 章节列表封面改用纯色替代渐变，减少 GPU 开销
+- 阅读器进度条修复（新增 snapshotFlow + sample(100) 限频追踪 scrollState）
+- 已读状态改用 Set 替代 Map，减少每次标记时全量拷贝
+
+### Features
+- 章节列表新增书籍简介展示（通过路由参数传递 book.description）
+- NavGraph 导航参数扩展支持书籍描述传递
+
 ## v1.1.3
 
 ### Fixed
