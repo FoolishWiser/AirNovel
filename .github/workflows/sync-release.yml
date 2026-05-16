@@ -66,13 +66,17 @@ jobs:
               --argjson pre "$prerelease" \
               '{access_token: $at, tag_name: $tag, name: $name, body: $body, prerelease: $pre}')
 
-            RID=$(curl -sS -X POST \
+            RESP=$(curl -sS -X POST \
               -H "Content-Type: application/json" \
               -d "$PAYLOAD" \
-              "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases" \
-              | jq -r '.id // empty')
+              "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases")
+            RID=$(echo "$RESP" | jq -r '.id // empty')
 
-            [ -z "$RID" ] && echo "FAIL" && return
+            if [ -z "$RID" ]; then
+              echo "FAIL - API response:"
+              echo "$RESP" | jq .
+              return
+            fi
 
             echo "$assets_json" | jq -c '.[]' 2>/dev/null | while read -r asset; do
               aname=$(echo "$asset" | jq -r '.name // empty')
