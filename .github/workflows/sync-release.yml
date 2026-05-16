@@ -39,15 +39,18 @@ jobs:
         run: |
           set -e
 
-          # Collect existing Gitee releases
-          EXISTING=$(curl -sS \
+          # Delete all existing Gitee releases first (to fix order)
+          echo "Clearing existing Gitee releases..."
+          EXISTING_IDS=$(curl -sS \
             "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN&per_page=100" \
-            | jq -r '.[] | "\(.tag_name) \(.id)"')
-
-          declare -A EXISTING_MAP
-          while IFS=' ' read -r tag id; do
-            [ -n "$tag" ] && [ -n "$id" ] && EXISTING_MAP["$tag"]="$id"
-          done <<< "$EXISTING"
+            | jq -r '.[].id')
+          for rid in $EXISTING_IDS; do
+            [ -z "$rid" ] && continue
+            curl -sS -X DELETE \
+              "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases/$rid?access_token=$GITEE_TOKEN" > /dev/null
+            echo "  Deleted release id=$rid"
+          done
+          echo "All cleared"
 
           sync_one() {
             local tag="$1" name="$2" body="$3" prerelease="$4" assets_json="$5"
@@ -102,7 +105,7 @@ jobs:
             sync_one "$TAG" "$NAME" "$BODY" "$PRE" "$ASSETS"
           else
             # Iterate over all git tags (not just GitHub Releases)
-            for tag in $(git tag --sort=-version:refname); do
+            for tag in $(git tag --sort=version:refname); do
               [ -z "$tag" ] && continue
               # Try to get GitHub Release details, fallback to tag-only
               if DETAILS=$(gh release view "$tag" --json name,body,isPrerelease,assets 2>/dev/null); then
